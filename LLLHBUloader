@@ -1,3 +1,42 @@
+local LATAM_DUELS_PLACE_ID = 129714054840627
+
+local ALLOWED_PLACE_IDS = {
+    [100000081125400] = true,
+    [135207708734108] = true,
+    [118663948353042] = true,
+    [125354647554476] = true,
+    [93930118309121] = true,
+    [87505594740333] = true,
+    [105010829315032] = true,
+    [121562300105609] = true,
+    [97874431674178] = true,
+    [122322877012159] = true,
+    [99312875456341] = true,
+    [134963371142373] = true,
+    [131117978948830] = true,
+    [105508393775130] = true,
+    [129043781833299] = true,
+    [75456685765982] = true,
+    [86635050681926] = true,
+    [102504926473744] = true,
+    [101617670515690] = true,
+    [137570376387995] = true,
+    [74084441161738] = true,
+    [135856908115931] = true,
+    [92876937625630] = true,
+    [114176825419426] = true,
+    [97251114306253] = true,
+    [81344624573389] = true,
+    [123627218337521] = true,
+    [124848751642883] = true,
+}
+
+local isLatamDuels = game.PlaceId == LATAM_DUELS_PLACE_ID
+
+if not isLatamDuels and not ALLOWED_PLACE_IDS[game.PlaceId] then
+    return
+end
+
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
@@ -13,7 +52,12 @@ local INIT_SCRIPT_URL = "https://api.jnkie.com/api/v1/luascripts/public/62c58c10
 
 local SCRIPT_URLS = {
     Mobile = "https://api.jnkie.com/api/v1/luascripts/public/ffe564b4000729161d1ee74d43a701c4a99ca8a14ecb6bf1e8dd591ab7d0886e/download",
-    PC = "https://api.jnkie.com/api/v1/luascripts/public/c0d7433e85dd6105ffeac56e4bfc586be4323e120bda5d21ad6f39b9f5a2882c/download"
+    PC = "https://api.jnkie.com/api/v1/luascripts/public/c0d7433e85dd6105ffeac56e4bfc586be4323e120bda5d21ad6f39b9f5a2882c/download",
+}
+
+local LATAM_DUELS_SCRIPT_URLS = {
+    Mobile = "https://api.jnkie.com/api/v1/luascripts/public/39b21e89e33dc20227dadff16abfe5b9e8cdd7ed0460f6cd6100e0eb3b8628eb/download",
+    PC = "https://api.jnkie.com/api/v1/luascripts/public/d3d550538a27f26c4885137f3a56d742653828cbf303fd7510fae087b887a556/download",
 }
 
 local function getRequestFunction()
@@ -33,11 +77,11 @@ local function publishActiveUser()
             Method = "POST",
             Headers = {
                 ["Content-Type"] = "application/json",
-                ["X-Activos-Key"] = API_KEY
+                ["X-Activos-Key"] = API_KEY,
             },
             Body = HttpService:JSONEncode({
-                count = 1
-            })
+                count = 1,
+            }),
         })
     end)
 end
@@ -60,7 +104,7 @@ local function fetchScript(url)
     local body
     local requestError
 
-    local ok = pcall(function()
+    local ok, fetchError = pcall(function()
         local success, result = pcall(function()
             return game:HttpGet(url)
         end)
@@ -75,10 +119,13 @@ local function fetchScript(url)
         if requestFunction then
             local response = requestFunction({
                 Url = url,
-                Method = "GET"
+                Method = "GET",
             })
 
-            if response and response.Body then
+            if response
+                and type(response.Body) == "string"
+                and response.Body ~= ""
+            then
                 body = response.Body
                 return
             end
@@ -88,7 +135,10 @@ local function fetchScript(url)
     end)
 
     if not ok or type(body) ~= "string" or body == "" then
-        error("Could not download script: " .. tostring(requestError or "unknown error"))
+        error(
+            "Could not download script: "
+                .. tostring(fetchError or requestError or "unknown error")
+        )
     end
 
     if type(loadstring) ~= "function" then
@@ -113,7 +163,11 @@ if not initOk then
 end
 
 local device = isMobileDevice() and "Mobile" or "PC"
-local targetUrl = SCRIPT_URLS[device]
+local selectedScripts = isLatamDuels
+    and LATAM_DUELS_SCRIPT_URLS
+    or SCRIPT_URLS
+
+local targetUrl = selectedScripts[device]
 
 local scriptOk, runtimeError = pcall(function()
     fetchScript(targetUrl)()
